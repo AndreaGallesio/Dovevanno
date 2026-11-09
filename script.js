@@ -1,28 +1,3 @@
-/* =====================================================================
-   CONFIGURAZIONE DELLA FUNZIONE "SCATTA UNA FOTO"  (modifica solo questo blocco)
-   =====================================================================
-   1) destinatario  -> scrivi qui il TUO indirizzo email: viene mostrato nella
-                       finestra della foto. Lo stesso indirizzo va impostato
-                       anche nel campo "To Email" del template su EmailJS.
-   2) emailjs       -> Service ID, Template ID e Public Key presi dalla tua
-                       dashboard EmailJS (la Public Key è fatta per essere
-                       pubblica; NON inserire mai la Private Key).
-   ===================================================================== */
-const FOTO_CONFIG={
-  destinatario:"INSERISCI_QUI_LA_TUA_EMAIL",
-  emailjs:{
-    serviceId:"INSERISCI_SERVICE_ID",
-    templateId:"INSERISCI_TEMPLATE_ID",
-    publicKey:"INSERISCI_PUBLIC_KEY"
-  },
-  oggetto:"Nuova fotografia dal sito",
-  nomeParametroFoto:"photo",   // deve coincidere con il nome della "Variable Attachment" nel template
-  maxByte:450*1024,            // peso massimo della foto (il piano Personal di EmailJS ammette 500 KB)
-  maxLato:1280,                // lato massimo in pixel
-  maxInviOra:3,                // massimo di invii in un'ora per ogni dispositivo
-  attesaSecondi:30             // attesa minima tra un invio e il successivo
-};
-
 const CATS=["Bar e caffè","Ristoranti e cibo","Tabacchi","Spesa","Trasporti","Shopping","Persone","Risparmi e investimenti","Ricariche e banca","Altro"];
 const COL=["#7c6cff","#ff8a3d","#12b5a5","#f0477a","#2d9cff","#ffc233","#9bdc4d","#6f6c92","#5a5778","#b65cf5"];
 const NONSPEND=["Risparmi e investimenti","Ricariche e banca"];
@@ -40,7 +15,7 @@ const eur=n=>n.toLocaleString("it-IT",{style:"currency",currency:"EUR"});
 const eur0=n=>n.toLocaleString("it-IT",{style:"currency",currency:"EUR",maximumFractionDigits:0});
 const norm=s=>String(s==null?"":s).trim();
 const h=(t,a={},...c)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==="class")e.className=v;else if(k.startsWith("on"))e[k]=v;else e.setAttribute(k,v)}for(const x of c.flat())if(x!=null)e.append(x.nodeType?x:document.createTextNode(x));return e};
-const mLabel=m=>{if(m[0]==="y")return "Anno "+m.slice(1);const[y,mo]=m.split("-");return new Date(+y,+mo-1,1).toLocaleDateString("it-IT",{month:"long",year:"numeric"})};
+const mLabel=m=>{if(m[0]==="w")return weekLabel(m);if(m[0]==="y")return "Anno "+m.slice(1);const[y,mo]=m.split("-");return new Date(+y,+mo-1,1).toLocaleDateString("it-IT",{month:"long",year:"numeric"})};
 const mShort=m=>{const[y,mo]=m.split("-");return new Date(+y,+mo-1,1).toLocaleDateString("it-IT",{month:"short"}).replace(".","")};
 
 let tx=new Map(),learned={},store=null,period="all",open=null,pending={},aiSet=new Set();
@@ -50,7 +25,7 @@ const SRCN={satispay:"Satispay",contanti:"Contanti"};
 const SRCS=[["tot","Totale"],["satispay","Satispay"],["contanti","Contanti"]];
 const SRCUI={
   tot:{intro:"Qui vedi insieme Satispay e contanti. Scegli un conto per caricare i movimenti."},
-  satispay:{intro:"Carica l’export dei movimenti di Satispay (file .xlsx): la tabella per categoria si crea da sola e la prossima volta ritrovi tutto.",imp:"Aggiungi un export di Satispay (.xlsx)",btn:"+ Aggiungi mese"},
+  satispay:{intro:"Carica l’export dei movimenti di Satispay (file .xlsx), anche ogni settimana: i movimenti già presenti vengono saltati e la tabella per categoria si crea da sola.",imp:"Aggiungi un export di Satispay (.xlsx)",btn:"+ Carica spese"},
   contanti:{intro:"Qui inserisci a mano le spese in contanti: tocca il pulsante qui sotto."}
 };
 const srcOf=t=>t.s||"satispay";
@@ -128,7 +103,7 @@ async function load(file){
     for(const r of rows){if(tx.has(r.id)){dup++;continue}tx.set(r.id,r);months.add(r.d.slice(0,7));add++}
     await persist(months);
     const m=$("msg");m.textContent=add+" movimenti aggiunti"+(dup?", "+dup+" già presenti":"")+".";m.hidden=false;
-    if(add){const ms=[...months].sort();period=ms[ms.length-1]}
+    if(add){const ds=rows.map(r=>r.d.slice(0,10)).sort();period="w"+mondayOf(ds[ds.length-1])}
     open=null;render();
     if(window.gsap&&!RM)gsap.fromTo("#hero",{scale:.96},{scale:1,duration:.9,ease:"elastic.out(1,.45)"});
   }catch(e){showErr(e.message||"Non riesco a leggere il file.")}
@@ -137,7 +112,22 @@ async function load(file){
 $("file").addEventListener("change",e=>{const f=e.target.files[0];if(f)load(f)});
 
 /* ---- calcoli ---- */
-const inPeriod=t=>period==="all"||(period[0]==="y"?t.d.slice(0,4)===period.slice(1):t.d.slice(0,7)===period);
+function mondayOf(d){const x=new Date(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10));x.setDate(x.getDate()-(x.getDay()+6)%7);return x.getFullYear()+"-"+pad(x.getMonth()+1)+"-"+pad(x.getDate())}
+const weekKey=t=>"w"+mondayOf(t.d.slice(0,10));
+function wkAdd(iso,n){const x=new Date(+iso.slice(0,4),+iso.slice(5,7)-1,+iso.slice(8,10));x.setDate(x.getDate()+n);return x.getFullYear()+"-"+pad(x.getMonth()+1)+"-"+pad(x.getDate())}
+function weekLabel(k){
+  const a=new Date(+k.slice(1,5),+k.slice(6,8)-1,+k.slice(9,11)),b=new Date(a);b.setDate(b.getDate()+6);
+  const mo=d=>d.toLocaleDateString("it-IT",{month:"short"}).replace(".","");
+  return a.getMonth()===b.getMonth()?a.getDate()+"–"+b.getDate()+" "+mo(b)+" "+b.getFullYear():a.getDate()+" "+mo(a)+" – "+b.getDate()+" "+mo(b)+" "+b.getFullYear();
+}
+const allWeeks=()=>[...new Set(T().map(weekKey))].sort();
+const inKey=(t,k)=>k[0]==="w"?weekKey(t)===k:t.d.slice(0,7)===k;
+function prevPeriod(){
+  if(/^\d{4}-\d{2}$/.test(period)){const m=allMonths(),i=m.indexOf(period);return i>0?m[i-1]:null}
+  if(period[0]==="w"){const w=allWeeks(),i=w.indexOf(period);return i>0?w[i-1]:null}
+  return null;
+}
+const inPeriod=t=>period==="all"||(period[0]==="w"?weekKey(t)===period:period[0]==="y"?t.d.slice(0,4)===period.slice(1):t.d.slice(0,7)===period);
 const allMonths=()=>[...new Set(T().map(t=>t.d.slice(0,7)))].sort();
 function totals(list){
   const o={};
@@ -168,7 +158,7 @@ function bars(catFilter){
   let s='<svg viewBox="0 0 '+W+" "+H+'" width="100%" role="img" aria-label="Uscite mese per mese">';
   ms.forEach((m,k)=>{
     const x=8+(W-16)/ms.length*(k+.5)-bw/2;let y=H-bot;
-    const dim=period!=="all"&&period[0]!=="y"&&period!==m?' opacity=".35"':"";
+    const dim=period!=="all"&&period[0]!=="y"&&period[0]!=="w"&&period!==m?' opacity=".35"':"";
     s+='<g data-m="'+m+'" style="cursor:pointer"'+dim+'>';
     const keys=catFilter?[catFilter]:[...CATS,"Da confermare"];
     for(const c of keys){const v=data[k][c];if(!v)continue;const hh=v/max*(H-top-bot);y-=hh;s+='<rect class="gb" style="animation-delay:'+(k*45)+'ms" x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+hh.toFixed(1)+'" rx="2" fill="'+(c==="Da confermare"?"#b9a36a":catFilter?"var(--acc)":col(c))+'"/>'}
@@ -202,23 +192,26 @@ function render(){
   if(ui.imp)dz.querySelector("span").textContent=ui.imp;
   if(!list.length)return;
   const ms=allMonths();
-  if(period!=="all"&&period[0]!=="y"&&!ms.includes(period))period=ms[ms.length-1];
-  const years=[...new Set(ms.map(m=>m.slice(0,4)))];
-  const mode=period==="all"?"all":period[0]==="y"?"year":"month";
+  if(period[0]==="w"){const wv=allWeeks();if(!wv.includes(period))period=wv[wv.length-1]||"all"}
+  else if(period!=="all"&&period[0]!=="y"&&!ms.includes(period))period=ms[ms.length-1];
+  const wks=allWeeks(),years=[...new Set(ms.map(m=>m.slice(0,4)))];
+  const mode=period==="all"?"all":period[0]==="y"?"year":period[0]==="w"?"week":"month";
   const cap=x=>x[0].toUpperCase()+x.slice(1);
+  const yrOf=mode==="week"?period.slice(1,5):mode==="month"?period.slice(0,4):mode==="year"?period.slice(1):years[years.length-1];
   const setMode=m=>{
-    const yr=mode==="month"?period.slice(0,4):mode==="year"?period.slice(1):years[years.length-1];
+    if(m===mode)return;
     if(m==="all")period="all";
-    else if(m==="year")period="y"+yr;
-    else period=mode==="month"?period:ms.filter(x=>x.startsWith(yr)).pop();
+    else if(m==="year")period="y"+yrOf;
+    else if(m==="month")period=mode==="week"&&ms.includes(period.slice(1,8))?period.slice(1,8):(ms.filter(x=>x.startsWith(yrOf)).pop()||ms[ms.length-1]);
+    else period=(mode==="month"?wks.filter(w=>w.slice(1,8)===period).pop():wks.filter(w=>w.slice(1,5)===yrOf).pop())||wks[wks.length-1];
     open=null;navDir=0;render();
   };
   const seg=$("seg3");seg.textContent="";
-  for(const[m,l]of [["month","Mese"],["year","Anno"],["all","Tutto"]])seg.append(h("button",{type:"button",class:"sg"+(m===mode?" on":""),onclick:()=>setMode(m)},l));
+  for(const[m,l]of [["week","Settimana"],["month","Mese"],["year","Anno"],["all","Tutto"]])seg.append(h("button",{type:"button",class:"sg"+(m===mode?" on":""),onclick:()=>setMode(m)},l));
   const nav=$("nav");nav.textContent="";nav.hidden=mode==="all";navGo=null;
   if(mode!=="all"){
-    const opts=mode==="month"?ms:years.map(y=>"y"+y),i=opts.indexOf(period);
-    const lab=p=>mode==="month"?cap(mLabel(p)):p.slice(1);
+    const opts=mode==="week"?wks:mode==="month"?ms:years.map(y=>"y"+y),i=opts.indexOf(period);
+    const lab=p=>mode==="week"?weekLabel(p):mode==="month"?cap(mLabel(p)):p.slice(1);
     const go=d=>{const j=i+d;if(j<0||j>=opts.length)return;period=opts[j];open=null;navDir=d;render()};
     navGo=go;
     const sel=h("select",{class:"ghostsel","aria-label":"Scegli il periodo"});
@@ -233,9 +226,10 @@ function render(){
 
   const cur=list.filter(inPeriod),tot=totals(cur),all=tot.reduce((a,[,v])=>a+v,0);
   let cmp=null;
-  if(/^\d{4}-\d{2}$/.test(period)){const i=ms.indexOf(period);if(i>0){const pm=ms[i-1],pt=list.filter(t=>t.i<0&&t.d.slice(0,7)===pm).reduce((a,t)=>a-t.i,0);if(pt){const d=(all-pt)/pt*100;cmp=(d>=0?"▲ +":"▼ ")+d.toFixed(0)+"% rispetto a "+mShort(pm)}}}
+  const pp=prevPeriod();
+  if(pp){const pt=agg(list.filter(t=>inKey(t,pp))).out;if(pt){const d=(all-pt)/pt*100;cmp=(d>=0?"▲ +":"▼ ")+d.toFixed(0)+"% rispetto "+(pp[0]==="w"?(pp.slice(1)===wkAdd(period.slice(1),-7)?"alla settimana scorsa":"a "+weekLabel(pp)):"a "+mShort(pp))}}
   const hero=$("heroIn");hero.textContent="";const real=tot.filter(([c])=>!NONSPEND.includes(c)&&c!=="Da confermare").reduce((a,[,v])=>a+v,0);const sav=(tot.find(x=>x[0]==="Risparmi e investimenti")||[0,0])[1];
-  hero.append(h("div",{class:"mute"},period==="all"?"Uscite totali":(period[0]==="y"?"Uscite "+mLabel(period).toLowerCase():"Uscite di "+mLabel(period))),h("div",{class:"big"},eur(all)),
+  hero.append(h("div",{class:"mute"},period==="all"?"Uscite totali":(period[0]==="y"?"Uscite "+mLabel(period).toLowerCase():period[0]==="w"?"Uscite della settimana "+mLabel(period):"Uscite di "+mLabel(period))),h("div",{class:"big"},eur(all)),
     h("div",{class:"mrow"},cmp?h("span",{class:"pill"},cmp):null,h("span",{class:"mute"},(sav?"di cui risparmi "+eur(sav)+" · ":"")+cur.filter(t=>t.i<0).length+" pagamenti")),
     h("div",{class:"hbtns"},SRCUI[src].btn?h("button",{type:"button",class:"gbtn",onclick:()=>$("file").click()},SRCUI[src].btn):null,h("button",{type:"button",class:"gbtn",onclick:openForm},"+ Spesa a mano")));
   countUp(hero.querySelector(".big"),all);
@@ -264,7 +258,7 @@ function agg(l){let inc=0,out=0,sav=0;for(const t of l){if(t.i>0)inc+=t.i;else{o
 function pctTxt(a,b){if(!b)return null;const d=(a-b)/b*100;return (d>=0?"▲ +":"▼ ")+d.toFixed(0)+"%"}
 function renderStats(cur,list){
   const a=agg(cur);let p=null;
-  if(/^\d{4}-\d{2}$/.test(period)){const ms=allMonths(),i=ms.indexOf(period);if(i>0)p=agg(list.filter(t=>t.d.slice(0,7)===ms[i-1]))}
+  const pq=prevPeriod();if(pq)p=agg(list.filter(t=>inKey(t,pq)));
   const f=v=>v>=10000?eur0(v):eur(v);
   const defs=[["Entrate",a.inc,p&&p.inc,"#4ade80","M3 17l6-6 4 4 8-8M15 7h6v6"],["Uscite",a.out,p&&p.out,"#ff5d8f","M3 7h18v10H3zM3 11h18"],["Risparmi",a.sav,p&&p.sav,"#5aa2ff",IC["Risparmi e investimenti"]]];
   const box=$("stats");box.textContent="";
@@ -287,21 +281,32 @@ function renderBrk(tot,all){
   b.append(h("div",{class:"head"},h("b",{},"Ripartizione spese"),h("span",{class:"mute"},period==="all"?"Tutto":mLabel(period))),h("div",{class:"brkbody"},lg,dn));
 }
 function lineChart(cur){
-  if(!/^\d{4}-\d{2}$/.test(period)||!cur.some(t=>t.i<0))return null;
-  const[y,mo]=period.split("-").map(Number),nd=new Date(y,mo,0).getDate(),day=Array(nd).fill(0);
-  for(const t of cur)if(t.i<0)day[+t.d.slice(8,10)-1]-=t.i;
-  const ld=Math.max(...cur.filter(t=>t.i<0).map(t=>+t.d.slice(8,10)));
+  cur=cur.filter(t=>categoria(t)!=="Risparmi e investimenti");
+  const isM=/^\d{4}-\d{2}$/.test(period),isW=period[0]==="w";
+  if(!(isM||isW)||!cur.some(t=>t.i<0))return null;
+  let nd,idx,labs;
+  if(isW){
+    nd=7;const m0=new Date(+period.slice(1,5),+period.slice(6,8)-1,+period.slice(9,11));
+    idx=t=>Math.round((new Date(+t.d.slice(0,4),+t.d.slice(5,7)-1,+t.d.slice(8,10))-m0)/864e5);
+    labs=["Lun","Mar","Mer","Gio","Ven","Sab","Dom"].map((l,i)=>[l,i]);
+  }else{
+    const[y,mo]=period.split("-").map(Number);nd=new Date(y,mo,0).getDate();
+    idx=t=>+t.d.slice(8,10)-1;labs=[1,8,15,22,nd].map(d=>[d,d-1]);
+  }
+  const day=Array(nd).fill(0);
+  for(const t of cur)if(t.i<0)day[idx(t)]-=t.i;
+  const ld=Math.max(...cur.filter(t=>t.i<0).map(idx))+1;
   let a=0;const cum=day.slice(0,ld).map(v=>a+=v);
   const W=320,H=150,L=8,T=14,B=22,mx=Math.max(cum[ld-1],1)*1.08;
-  const X=d=>L+(W-2*L)*(d/(nd-1)),Y=v=>H-B-v/mx*(H-T-B);
+  const X=i=>L+(W-2*L)*(i/(nd-1)),Y=v=>H-B-v/mx*(H-T-B);
   const line="M"+cum.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join("L"),area=line+"L"+X(ld-1).toFixed(1)+","+(H-B)+"L"+X(0).toFixed(1)+","+(H-B)+"Z";
-  let s='<svg viewBox="0 0 '+W+" "+H+'" width="100%" role="img" aria-label="Spesa accumulata nel mese"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b6dff" stop-opacity=".5"/><stop offset="1" stop-color="#8b6dff" stop-opacity="0"/></linearGradient></defs>';
+  let s='<svg viewBox="0 0 '+W+" "+H+'" width="100%" role="img" aria-label="Spesa accumulata"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b6dff" stop-opacity=".5"/><stop offset="1" stop-color="#8b6dff" stop-opacity="0"/></linearGradient></defs>';
   s+='<path class="ar" d="'+area+'" fill="url(#ag)"/><path class="ln" d="'+line+'" pathLength="1" fill="none" stroke="#a58bff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="stroke-dasharray:1"/><circle cx="'+X(ld-1).toFixed(1)+'" cy="'+Y(cum[ld-1]).toFixed(1)+'" r="4" fill="#fff"/>';
-  for(const d of [1,8,15,22,nd])s+='<text x="'+X(d-1).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="9" style="fill:var(--mute)">'+d+'</text>';
+  for(const[l,i]of labs)s+='<text x="'+X(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="9" style="fill:var(--mute)">'+l+'</text>';
   return s+"</svg>";
 }
 function renderCharts(cur){
-  const ln=lineChart(cur);$("lnT").hidden=$("lnc").hidden=!ln;if(ln)$("lnc").innerHTML=ln;
+  const ln=lineChart(cur);$("lnT").textContent=period[0]==="w"?"Andamento nella settimana":"Andamento nel mese";$("lnT").hidden=$("lnc").hidden=!ln;if(ln)$("lnc").innerHTML=ln;
 }
 const TRASH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>';
 function delBtn(t){
@@ -345,7 +350,7 @@ async function saveForm(){
   if(src!=="tot"&&src!==t.s){src=t.s;try{localStorage.setItem("sp-src",src)}catch(e){}}
   await persist(new Set([d.slice(0,7)]));
   closeForm();
-  period=d.slice(0,7);open=null;
+  period="w"+mondayOf(d.slice(0,10));open=null;
   render();
   const m=$("msg");m.textContent="Spesa aggiunta.";m.hidden=false;
 }
@@ -464,150 +469,4 @@ for(const c of [...CATS,"Da confermare"])$("fc").add(new Option(c,c));
 for(const id of ["q","fmin"])$(id).addEventListener("input",renderTx);
 for(const id of ["fc","fd1","fd2"])$(id).addEventListener("change",renderTx);
 $("brk").addEventListener("click",e=>{const g=e.target.closest("[data-c]");if(g&&g.dataset.c!=="Da confermare"){open=g.dataset.c;render()}});
-(async()=>{await initStore();await loadAll();for(const[k,t]of [...tx])if(t.s==="banca")tx.delete(k);render();intro()})();
-
-
-/* =====================================================================
-   FOTO + INVIO VIA EMAIL (EmailJS)
-   ===================================================================== */
-(function(){
-  const C=FOTO_CONFIG,Q=s=>document.querySelector(s),modal=Q("#phModal");
-  if(!modal)return;
-  const video=Q("#phVideo"),img=Q("#phImg"),msg=Q("#phMsg"),load=Q("#phLoad"),
-        bars={live:Q("#phBarLive"),preview:Q("#phBarPrev"),done:Q("#phBarDone")},retryBtn=Q("#phRetry"),sendBtn=Q("#phSend");
-  let stream=null,facing="user",dataUrl=null,takenAt=null,sending=false,view="live",retry=null,lastFocus=null,prevOverflow="";
-  for(const e of document.querySelectorAll("[data-ph-to]"))e.textContent=C.destinatario;
-
-  const configured=()=>!/INSERISCI/.test([C.destinatario,C.emailjs.serviceId,C.emailjs.templateId,C.emailjs.publicKey].join(" "));
-  const fmt=d=>d.toLocaleString("it-IT",{dateStyle:"full",timeStyle:"medium"});
-  const note=(kind,t)=>{msg.className="phmsg"+(kind?" "+kind:"");msg.textContent=t||"";msg.hidden=!t};
-
-  function show(v){
-    view=v;
-    bars.live.hidden=v!=="live";bars.preview.hidden=v!=="preview";bars.done.hidden=v!=="done";
-    video.hidden=v!=="live";img.hidden=v!=="preview"&&v!=="sending"&&!(v==="done"&&dataUrl);
-    load.hidden=v!=="sending";
-  }
-
-  /* ---- fotocamera ---- */
-  function stop(){
-    if(stream){for(const t of stream.getTracks())t.stop();stream=null}
-    video.srcObject=null;
-  }
-  const camError=e=>{
-    const n=e&&e.name;
-    if(n==="NotAllowedError"||n==="SecurityError")return"Permesso negato. Per scattare la foto consenti l’uso della fotocamera nelle impostazioni del browser per questo sito, poi tocca Riprova.";
-    if(n==="NotFoundError"||n==="DevicesNotFoundError")return"Non trovo nessuna fotocamera su questo dispositivo.";
-    if(n==="NotReadableError"||n==="TrackStartError")return"La fotocamera è già in uso da un’altra app. Chiudila e riprova.";
-    return"Non riesco ad accendere la fotocamera.";
-  };
-  async function start(){
-    stop();note();dataUrl=null;img.removeAttribute("src");show("live");
-    if(!window.isSecureContext||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-      note("err","La fotocamera funziona solo su una connessione sicura (https) e con un browser compatibile.");retry=null;show("done");retryBtn.hidden=true;return;
-    }
-    try{
-      try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:960}},audio:false})}
-      catch(e){if(e&&(e.name==="OverconstrainedError"||e.name==="ConstraintNotSatisfiedError"))stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});else throw e}
-      if(modal.hidden){stop();return}
-      video.srcObject=stream;video.classList.toggle("mirror",facing==="user");
-      await video.play().catch(()=>{});
-    }catch(e){
-      note("err",camError(e));retry=start;show("done");retryBtn.hidden=false;
-    }
-  }
-
-  /* ---- scatto: l'immagine viene ridotta fino a stare nel peso massimo ---- */
-  function snap(){
-    if(!stream||!video.videoWidth)return;
-    takenAt=new Date();
-    const k=Math.min(1,C.maxLato/Math.max(video.videoWidth,video.videoHeight));
-    let w=Math.round(video.videoWidth*k),h=Math.round(video.videoHeight*k),q=.85;
-    const cv=document.createElement("canvas");
-    for(let i=0;i<10;i++){
-      cv.width=w;cv.height=h;cv.getContext("2d").drawImage(video,0,0,w,h);
-      dataUrl=cv.toDataURL("image/jpeg",q);
-      if(dataUrl.length*.75<=C.maxByte)break;
-      if(q>.55)q-=.1;else{w=Math.round(w*.85);h=Math.round(h*.85)}
-    }
-    stop();img.src=dataUrl;note();show("preview");
-    if(window.gsap&&!RM)gsap.fromTo(img,{opacity:.2,scale:1.04},{opacity:1,scale:1,duration:.4,ease:"power3.out"});
-  }
-
-  /* ---- protezioni contro invii ripetuti ---- */
-  const KEY="ph-invii";
-  function sentList(){try{return JSON.parse(localStorage.getItem(KEY)||"[]").filter(t=>Date.now()-t<36e5)}catch(e){return []}}
-  function limitMsg(){
-    const l=sentList();
-    if(l.length&&Date.now()-l[l.length-1]<C.attesaSecondi*1000)return"Hai appena inviato una foto. Attendi qualche secondo prima di inviarne un’altra.";
-    if(l.length>=C.maxInviOra)return"Hai raggiunto il limite di "+C.maxInviOra+" foto all’ora. Riprova più tardi.";
-    return"";
-  }
-  function noteSent(){try{localStorage.setItem(KEY,JSON.stringify([...sentList(),Date.now()]))}catch(e){}}
-
-  /* ---- invio reale tramite EmailJS ---- */
-  const sendError=e=>{
-    const s=e&&e.status,t=e&&e.text?String(e.text):"";
-    if(s===429)return"Troppi invii ravvicinati. Attendi qualche secondo e riprova.";
-    if(s===403)return"Questo sito non è autorizzato a usare EmailJS. Controlla i domini consentiti nella dashboard.";
-    if(s===413)return"La foto è troppo pesante per il tuo piano EmailJS.";
-    if(s===400||s===412)return"Invio non riuscito: controlla Service ID, Template ID e Public Key"+(t?" ("+t+")":"")+".";
-    return"Invio non riuscito"+(t?": "+t:". Controlla la connessione e riprova.");
-  };
-  async function send(){
-    if(sending||!dataUrl)return;
-    if(!configured()){note("err","L’invio non è ancora configurato: inserisci l’indirizzo email e le chiavi EmailJS nel file script.js.");retry=null;show("done");retryBtn.hidden=true;return}
-    if(!window.emailjs){note("err","Il servizio email non è raggiungibile. Controlla la connessione e riprova.");retry=send;show("done");retryBtn.hidden=false;return}
-    const lim=limitMsg();
-    if(lim){note("err",lim);retry=null;show("done");retryBtn.hidden=true;return}
-    sending=true;sendBtn.disabled=true;note();show("sending");
-    const when=takenAt||new Date();
-    const params={subject:C.oggetto,message:"Fotografia scattata il "+fmt(when)+".",date:fmt(when),[C.nomeParametroFoto]:dataUrl};
-    try{
-      await emailjs.send(C.emailjs.serviceId,C.emailjs.templateId,params,{publicKey:C.emailjs.publicKey,limitRate:{id:"foto",throttle:C.attesaSecondi*1000}});
-      noteSent();dataUrl=null;img.removeAttribute("src");
-      note("ok","Fotografia inviata a "+C.destinatario+".");retry=null;show("done");retryBtn.hidden=true;
-    }catch(e){
-      note("err",sendError(e));retry=send;show("done");retryBtn.hidden=false;
-    }finally{sending=false;sendBtn.disabled=false}
-  }
-
-  /* ---- finestra ---- */
-  function openModal(){
-    lastFocus=document.activeElement;prevOverflow=document.body.style.overflow;
-    modal.hidden=false;document.body.style.overflow="hidden";
-    if(window.gsap&&!RM){gsap.fromTo(".phpanel",{y:60,opacity:0},{y:0,opacity:1,duration:.45,ease:"power3.out"});gsap.fromTo(modal,{opacity:0},{opacity:1,duration:.25})}
-    Q("#phClose").focus();start();
-  }
-  function closeModal(){
-    if(sending)return;
-    stop();modal.hidden=true;document.body.style.overflow=prevOverflow;
-    dataUrl=null;takenAt=null;img.removeAttribute("src");note();
-    if(lastFocus&&lastFocus.focus)lastFocus.focus();
-  }
-  Q("#phOpen").onclick=openModal;
-  Q("#phClose").onclick=closeModal;Q("#phCancel").onclick=closeModal;Q("#phDone").onclick=closeModal;
-  modal.addEventListener("click",e=>{if(e.target===modal)closeModal()});
-  Q("#phShutter").onclick=()=>{if(window.gsap&&!RM)gsap.fromTo("#phShutter",{scale:.82},{scale:1,duration:.5,ease:"elastic.out(1,.5)"});snap()};
-  Q("#phFlip").onclick=()=>{facing=facing==="user"?"environment":"user";start()};
-  Q("#phRetake").onclick=()=>{dataUrl=null;takenAt=null;start()};
-  sendBtn.onclick=send;
-  retryBtn.onclick=()=>{if(retry)retry()};
-  document.addEventListener("keydown",e=>{
-    if(modal.hidden)return;
-    if(e.key==="Escape")closeModal();
-    if(e.key==="Tab"){
-      const f=[...modal.querySelectorAll("button:not([hidden]):not([disabled])")].filter(b=>b.offsetParent!==null);
-      if(!f.length)return;
-      const a=f[0],z=f[f.length-1];
-      if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus()}
-      else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus()}
-    }
-  });
-  /* la fotocamera non resta mai accesa in background */
-  document.addEventListener("visibilitychange",()=>{
-    if(document.hidden){if(stream)stop()}
-    else if(!modal.hidden&&view==="live"&&!stream)start();
-  });
-  window.addEventListener("pagehide",stop);
-})();
+(async()=>{await initStore();await loadAll();{const w0=allWeeks();if(w0.length)period=w0[w0.length-1]}for(const[k,t]of [...tx])if(t.s==="banca")tx.delete(k);render();intro()})();
