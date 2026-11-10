@@ -9,11 +9,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>try{if(localStorage.getItem("dv-cred"))document.documentElement.classList.add("locked")}catch(e){}</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
 <h1 class="brand"><svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#7c5cff"/><rect class="b1" x="10" y="11" width="20" height="4.5" rx="2.25" fill="#fff"/><rect class="b2" x="10" y="18" width="14" height="4.5" rx="2.25" fill="#fff"/><rect class="b3" x="10" y="25" width="8" height="4.5" rx="2.25" fill="#fff"/></svg>Dove Vanno</h1>
+<button type="button" id="secBtn" class="secbtn" aria-label="Sicurezza e blocco"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
 <div class="seg3" id="srcs" role="group" aria-label="Conto"></div>
 <p class="mute" id="intro">Carico i tuoi dati…</p>
 <label class="drop" id="drop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg><span>Aggiungi un export di Satispay (.xlsx)</span><input type="file" id="file" accept=".xlsx,.xls,.csv"></label>
@@ -49,6 +51,25 @@
 </section>
 </main>
 
+<div id="hist" hidden role="dialog" aria-modal="true" aria-labelledby="hTitle"><div class="hin2" id="histBody"></div></div>
+<div id="lock" role="dialog" aria-modal="true" aria-label="Sblocca Dove Vanno">
+  <svg class="lockLogo" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#7c5cff"/><rect x="10" y="11" width="20" height="4.5" rx="2.25" fill="#fff"/><rect x="10" y="18" width="14" height="4.5" rx="2.25" fill="#fff"/><rect x="10" y="25" width="8" height="4.5" rx="2.25" fill="#fff"/></svg>
+  <h2>Dove Vanno</h2>
+  <p class="mute">I tuoi dati sono protetti. Sblocca per continuare.</p>
+  <button type="button" id="lockBtn" class="lockBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 10v1.5M15 10v1.5M12 10v3.5h-1M9 16.5c1.8 1.4 4.2 1.4 6 0"/></svg><span>Sblocca con Face ID</span></button>
+  <p class="mute" id="lockMsg" role="status" aria-live="polite"></p>
+  <details class="lockhelp"><summary>Non riesco a sbloccare</summary><p>Se Face ID non funziona, iPhone ti chiede il codice di sblocco del telefono. Se hai perso l’accesso, cancella i dati del sito da Impostazioni › Safari › Avanzate › Dati dei siti web: perderai però i dati salvati.</p></details>
+</div>
+<div id="secSheet" class="secm" hidden role="dialog" aria-modal="true" aria-labelledby="secTitle">
+  <div class="secpanel">
+    <h2 id="secTitle">Sicurezza</h2>
+    <p id="secState" class="mute" style="margin:0 0 8px"></p>
+    <p class="mute" style="margin:0 0 14px">Quando il blocco è attivo, ti chiedo Face ID ogni volta che apri il sito e ogni volta che ci torni dopo averlo lasciato.</p>
+    <div class="phmsg2" id="secMsg" role="status" aria-live="polite" hidden></div>
+    <div class="secbar"><button type="button" class="ghost" id="secClose">Chiudi</button><button type="button" id="secToggle">Attiva il blocco</button></div>
+    <p class="mute" style="margin:14px 0 0;font-size:13px">È un blocco di privacy: protegge da chi prende il tuo telefono, ma i dati restano salvati nel browser.</p>
+  </div>
+</div>
 <div id="scrim" hidden></div>
 <div id="mform" hidden role="dialog" aria-label="Nuova spesa">
   <div class="grab"></div>

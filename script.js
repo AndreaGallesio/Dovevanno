@@ -266,6 +266,10 @@ function renderStats(cur,list){
     const e=h("div",{class:"st",style:"--c:"+c});
     e.innerHTML='<span class="sic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+path+'"/></svg></span>';
     e.append(h("div",{class:"mute"},n),h("div",{class:"sv amt","data-v":String(v)},f(v)),h("div",{class:"mute"},(p&&pctTxt(v,pv))||"nel periodo"));
+    const key={Entrate:"inc",Uscite:"out",Risparmi:"sav"}[n];
+    e.setAttribute("role","button");e.setAttribute("tabindex","0");e.setAttribute("aria-label","Vedi lo storico: "+n);
+    e.onclick=()=>openHist(key);
+    e.onkeydown=ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();openHist(key)}};
     box.append(e);
   }
 }
@@ -470,3 +474,140 @@ for(const id of ["q","fmin"])$(id).addEventListener("input",renderTx);
 for(const id of ["fc","fd1","fd2"])$(id).addEventListener("change",renderTx);
 $("brk").addEventListener("click",e=>{const g=e.target.closest("[data-c]");if(g&&g.dataset.c!=="Da confermare"){open=g.dataset.c;render()}});
 (async()=>{await initStore();await loadAll();{const w0=allWeeks();if(w0.length)period=w0[w0.length-1]}for(const[k,t]of [...tx])if(t.s==="banca")tx.delete(k);render();intro()})();
+
+/* =====================================================================
+   STORICO MENSILE (si apre toccando Entrate, Uscite o Risparmi)
+   ===================================================================== */
+const HIST={
+  inc:{t:"Storico delle entrate",c:"#2dd4bf",good:1},
+  out:{t:"Storico delle uscite",c:"#ff5d8f",good:-1},
+  sav:{t:"Storico dei risparmi",c:"#5aa2ff",good:1}
+};
+function closeHist(then){
+  const el=$("hist");if(el.hidden)return;
+  const done=()=>{el.hidden=true;document.body.style.overflow="";if(then)then()};
+  if(window.gsap&&!RM)gsap.to(el,{x:"100%",duration:.35,ease:"power3.in",onComplete:done});else done();
+}
+function openHist(key){
+  const meta=HIST[key],ms=allMonths(),list=T(),el=$("hist"),body=$("histBody");
+  const vals=ms.map(m=>({m,v:agg(list.filter(t=>t.d.slice(0,7)===m))[key]}));
+  if(!vals.length)return;
+  const total=vals.reduce((a,x)=>a+x.v,0),top=vals.reduce((a,x)=>x.v>a.v?x:a,vals[0]);
+  const curM=/^\d{4}-\d{2}$/.test(period)?period:period[0]==="w"?period.slice(1,8):"";
+  const cap=x=>x[0].toUpperCase()+x.slice(1);
+  const go=m=>closeHist(()=>{period=m;open=null;render();window.scrollTo(0,0)});
+  const sub=src==="tot"?"Tutti i conti":SRCN[src];
+  body.textContent="";
+  const back=h("button",{type:"button",class:"hback","aria-label":"Indietro",onclick:()=>closeHist()},"‹");
+  body.append(h("div",{class:"hhead"},back,h("div",{},h("h2",{id:"hTitle",style:"color:"+meta.c},meta.t),h("div",{class:"mute"},sub+" · "+vals.length+(vals.length===1?" mese":" mesi")))));
+  body.append(h("div",{class:"hsum"},
+    h("div",{},h("div",{class:"mute"},"Totale"),h("b",{},eur0(total))),
+    h("div",{},h("div",{class:"mute"},"Media al mese"),h("b",{},eur0(total/vals.length))),
+    h("div",{},h("div",{class:"mute"},"Più alto"),h("b",{},eur0(top.v)),h("div",{class:"mute",style:"font-size:12px"},cap(mShort(top.m))+" "+top.m.slice(2,4)))));
+  /* grafico di tutti i mesi */
+  const bw=30,gap=12,W=Math.max(320,vals.length*(bw+gap)+gap),H=170,tp=16,bt=24,mx=Math.max(...vals.map(x=>x.v),1);
+  let s='<svg viewBox="0 0 '+W+" "+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+meta.t+'">';
+  vals.forEach((x,i)=>{
+    const hh=x.v/mx*(H-tp-bt),xx=gap+i*(bw+gap),y=H-bt-hh;
+    s+='<g data-m="'+x.m+'" style="cursor:pointer"><rect class="gb" x="'+xx+'" y="'+y.toFixed(1)+'" width="'+bw+'" height="'+Math.max(hh,2).toFixed(1)+'" rx="7" fill="'+meta.c+'" opacity="'+(x.m===curM?1:.55)+'"/>';
+    s+='<text x="'+(xx+bw/2)+'" y="'+(y-4).toFixed(1)+'" text-anchor="middle" font-size="9" style="fill:var(--mute)">'+Math.round(x.v)+'</text>';
+    s+='<text x="'+(xx+bw/2)+'" y="'+(H-8)+'" text-anchor="middle" font-size="10" style="fill:var(--ink)">'+mShort(x.m)+(x.m.slice(5)==="01"||i===0?" "+x.m.slice(2,4):"")+'</text>';
+    s+='<rect x="'+(xx-gap/2)+'" y="0" width="'+(bw+gap)+'" height="'+H+'" fill="transparent"/></g>';
+  });
+  s+="</svg>";
+  const chart=h("div",{class:"card hchart"});chart.innerHTML=s;
+  chart.addEventListener("click",e=>{const g=e.target.closest("[data-m]");if(g)go(g.dataset.m)});
+  body.append(chart);
+  if(vals.length<2)body.append(h("p",{class:"mute",style:"margin:10px 4px"},"Quando caricherai altri mesi qui vedrai come cambiano nel tempo."));
+  /* elenco, dal più recente */
+  const rows=h("div",{class:"card",style:"margin-top:14px;padding:6px 14px"});
+  for(let i=vals.length-1;i>=0;i--){
+    const x=vals[i],p=i>0?vals[i-1].v:null;
+    let dEl=null;
+    if(p){const dd=(x.v-p)/p*100,ok=meta.good*dd;dEl=h("span",{class:"hd "+(Math.abs(dd)<.5?"flat":ok>=0?"good":"bad")},(dd>=0?"▲ +":"▼ ")+dd.toFixed(0)+"%")}
+    rows.append(h("button",{type:"button",class:"hrow",onclick:()=>go(x.m)},
+      h("b",{},cap(mLabel(x.m))),h("span",{class:"num"},eur(x.v)),
+      h("span",{class:"mute",style:"font-size:13px"},x.m===curM?(period[0]==="w"?"contiene la settimana scelta":"mese selezionato"):(p?"rispetto al mese prima":"primo mese")),dEl||h("span",{}),
+      h("div",{class:"hb"},h("i",{style:"width:"+(x.v/mx*100).toFixed(1)+"%;background:"+meta.c}))));
+  }
+  body.append(h("h2",{style:"margin:22px 4px 8px"},"Mese per mese"),rows);
+  el.hidden=false;el.scrollTop=0;document.body.style.overflow="hidden";
+  if(window.gsap&&!RM){
+    gsap.fromTo(el,{x:"100%"},{x:"0%",duration:.45,ease:"power4.out"});
+    gsap.from("#hist .hsum>div",{y:20,opacity:0,duration:.5,stagger:.08,delay:.15,ease:"power3.out"});
+    gsap.from("#hist .gb",{scaleY:0,transformOrigin:"50% 100%",duration:.7,stagger:.04,delay:.25,ease:"power3.out"});
+    gsap.from("#hist .hrow",{y:16,opacity:0,duration:.4,stagger:.04,delay:.3,ease:"power3.out"});
+    gsap.from("#hist .hb i",{width:0,duration:.8,stagger:.04,delay:.4,ease:"power3.out"});
+  }
+  const sc=chart;sc.scrollLeft=sc.scrollWidth;
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeHist()});
+
+/* =====================================================================
+   BLOCCO CON FACE ID  (passkey del dispositivo, WebAuthn)
+   ===================================================================== */
+(function(){
+  const Q=s=>document.querySelector(s),KEY="dv-cred",root=document.documentElement;
+  const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  const unb64=s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-s.length%4)%4)),c=>c.charCodeAt(0));
+  const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+  const getId=()=>{try{return localStorage.getItem(KEY)}catch(e){return null}};
+  let busy=false;
+  const lockMsg=t=>{Q("#lockMsg").textContent=t||""};
+
+  /* conferma con Face ID (o con il codice del telefono) */
+  async function verify(){
+    const id=getId();if(!id)return true;
+    const cred=await navigator.credentials.get({publicKey:{challenge:rnd(32),rpId:location.hostname,allowCredentials:[{type:"public-key",id:unb64(id),transports:["internal"]}],userVerification:"required",timeout:60000}});
+    return !!cred;
+  }
+  async function tryUnlock(auto){
+    if(busy||!root.classList.contains("locked"))return;
+    busy=true;if(!auto)lockMsg("");
+    try{
+      if(await verify()){root.classList.remove("locked");lockMsg("")}
+    }catch(e){
+      if(!auto)lockMsg(e&&e.name==="NotAllowedError"?"Sblocco annullato. Tocca il pulsante per riprovare.":"Non riesco a usare Face ID su questo dispositivo.");
+    }finally{busy=false}
+  }
+  function lockNow(){if(busy||!getId())return;root.classList.add("locked")}
+
+  /* il sito si blocca sempre: all'apertura, quando lo lasci e quando ci torni */
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden)lockNow();
+    else if(root.classList.contains("locked"))tryUnlock(true);
+  });
+  window.addEventListener("pagehide",lockNow);
+  window.addEventListener("pageshow",e=>{if(e.persisted){lockNow();tryUnlock(true)}});
+  Q("#lockBtn").onclick=()=>tryUnlock(false);
+  if(getId()){root.classList.add("locked");tryUnlock(true)}
+
+  /* ---- impostazioni ---- */
+  const sheet=Q("#secSheet"),tog=Q("#secToggle"),smsg=Q("#secMsg");
+  const secNote=(t,ok)=>{smsg.textContent=t||"";smsg.className="phmsg2"+(ok?" ok":"");smsg.hidden=!t};
+  function paint(){
+    const on=!!getId();
+    Q("#secState").innerHTML="Blocco con Face ID: <strong>"+(on?"attivo":"non attivo")+"</strong>";
+    tog.textContent=on?"Disattiva il blocco":"Attiva il blocco";
+  }
+  function openSheet(){secNote();paint();sheet.hidden=false;if(window.gsap&&!RM)gsap.fromTo(".secpanel",{y:50,opacity:0},{y:0,opacity:1,duration:.4,ease:"power3.out"})}
+  Q("#secBtn").onclick=openSheet;
+  Q("#secClose").onclick=()=>{sheet.hidden=true};
+  sheet.addEventListener("click",e=>{if(e.target===sheet)sheet.hidden=true});
+  tog.onclick=async()=>{
+    if(busy)return;busy=true;secNote();
+    try{
+      if(getId()){
+        if(await verify()){localStorage.removeItem(KEY);secNote("Blocco disattivato.",true)}
+      }else{
+        const ok=window.isSecureContext&&window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(()=>false);
+        if(!ok){secNote("Face ID non è disponibile su questo dispositivo o browser. Il sito deve essere aperto dall’indirizzo https pubblicato.");return}
+        const cred=await navigator.credentials.create({publicKey:{challenge:rnd(32),rp:{name:"Dove Vanno",id:location.hostname},user:{id:rnd(16),name:"dove-vanno",displayName:"Dove Vanno"},pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required",residentKey:"preferred"},attestation:"none",timeout:60000}});
+        localStorage.setItem(KEY,b64(cred.rawId));
+        secNote("Blocco attivato: da ora ti chiederò Face ID ogni volta.",true);
+      }
+    }catch(e){
+      secNote(e&&e.name==="NotAllowedError"?"Operazione annullata.":"Non sono riuscito a completare l’operazione.");
+    }finally{busy=false;paint()}
+  };
+})();

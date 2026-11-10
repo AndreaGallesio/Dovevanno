@@ -131,3 +131,51 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 @keyframes grow{from{width:0}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 [hidden]{display:none!important}
+
+/* ===== Blocco con Face ID ===== */
+main{position:relative}
+.secbtn{position:absolute;top:22px;right:16px;width:44px;height:44px;border-radius:50%;padding:0;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.secbtn svg{width:21px;height:21px}
+#lock{position:fixed;inset:0;z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center;background:radial-gradient(120% 70% at 50% 0%,#1b1560 0%,#07081a 62%)}
+html.locked #lock{display:flex}
+html.locked main,html.locked #scrim,html.locked #mform,html.locked #secSheet{visibility:hidden}
+html.locked,html.locked body{overflow:hidden}
+.lockLogo{width:68px;height:68px}
+#lock h2{margin:6px 0 0;font-size:30px;letter-spacing:-.02em}
+#lock p{margin:0;max-width:300px}
+.lockBtn{margin-top:14px;display:flex;align-items:center;gap:12px;padding:18px 28px;border-radius:99px;font-size:17px;font-weight:800;color:#fff;background:linear-gradient(135deg,#8b6dff,#4b3be3);box-shadow:0 16px 36px -14px rgba(124,92,255,.9)}
+.lockBtn svg{width:26px;height:26px;animation:lockpulse 2.4s ease-in-out infinite}
+@keyframes lockpulse{50%{transform:scale(1.14)}}
+.lockhelp{margin-top:18px;max-width:300px;font-size:13px;color:var(--mute)}
+.lockhelp summary{cursor:pointer;text-decoration:underline}
+.lockhelp p{margin-top:8px!important}
+.secm{position:fixed;inset:0;z-index:120;display:flex;align-items:flex-end;justify-content:center;background:rgba(5,5,20,.66);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.secpanel{width:100%;max-width:520px;padding:22px 18px calc(22px + env(safe-area-inset-bottom,0px));border-radius:30px 30px 0 0;background:rgba(14,15,40,.95);border:1px solid var(--line);box-shadow:0 -24px 60px rgba(0,0,0,.45)}
+@media (min-width:640px){.secm{align-items:center}.secpanel{border-radius:30px}}
+.secpanel h2{margin:0 0 8px;font-size:22px}
+.secbar{display:flex;gap:12px}.secbar button{flex:1;padding:14px 10px}
+.phmsg2{padding:12px 14px;border-radius:16px;font-weight:600;font-size:15px;margin-bottom:12px;background:rgba(255,93,115,.14);color:#ff9aa8;border:1px solid rgba(255,93,115,.4)}
+.phmsg2.ok{background:rgba(74,222,128,.16);color:#86efac;border-color:rgba(74,222,128,.4)}
+
+/* ===== Storico di entrate, uscite e risparmi ===== */
+.st{cursor:pointer;position:relative;transition:transform .2s var(--ease)}
+.st:active{transform:scale(.96)}
+.st::after{content:"›";position:absolute;top:8px;right:12px;font-size:22px;line-height:1;color:var(--c);opacity:.85}
+#hist{position:fixed;inset:0;z-index:90;overflow-y:auto;background:var(--bg);padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))}
+html.locked #hist{visibility:hidden}
+.hin2{max-width:560px;margin:0 auto}
+.hhead{display:flex;align-items:center;gap:12px}
+.hback{width:44px;height:44px;border-radius:50%;padding:0;flex:none;background:var(--card);border:1px solid var(--line);color:var(--ink);font-size:26px;line-height:1}
+.hhead h2{margin:0;font-size:22px}
+.hsum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.hsum>div{padding:12px;border-radius:18px;background:var(--card);border:1px solid var(--line);min-width:0}
+.hsum b{display:block;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hchart{overflow-x:auto;margin:0 -6px;padding:6px}
+.hrow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;width:100%;text-align:left;background:none;color:var(--ink);padding:13px 4px;border-bottom:1px solid var(--line);border-radius:0;font-weight:400}
+.hrow:last-child{border-bottom:0}
+.hrow b{font-weight:700;font-size:16px}
+.hrow .num{font-size:16px}
+.hb{grid-column:1/-1;height:6px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+.hb i{display:block;height:100%;border-radius:3px}
+.hd{font-size:13px;font-weight:700}
+.hd.good{color:#4ade80}.hd.bad{color:#ff7d8f}.hd.flat{color:var(--mute)}
