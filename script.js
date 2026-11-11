@@ -105,7 +105,6 @@ async function load(file){
     const m=$("msg");m.textContent=add+" movimenti aggiunti"+(dup?", "+dup+" già presenti":"")+".";m.hidden=false;
     if(add){const ds=rows.map(r=>r.d.slice(0,10)).sort();period="w"+mondayOf(ds[ds.length-1])}
     open=null;render();
-    if(window.gsap&&!RM)gsap.fromTo("#hero",{scale:.96},{scale:1,duration:.9,ease:"elastic.out(1,.45)"});
   }catch(e){showErr(e.message||"Non riesco a leggere il file.")}
   $("file").value="";
 }
@@ -220,7 +219,7 @@ function render(){
     const prev=h("button",{type:"button",class:"na","aria-label":"Periodo precedente",onclick:()=>go(-1)},"‹"),next=h("button",{type:"button",class:"na","aria-label":"Periodo successivo",onclick:()=>go(1)},"›");
     prev.disabled=i<=0;next.disabled=i>=opts.length-1;
     nav.append(prev,h("div",{class:"nl"},h("span",{id:"navL"},lab(period)),h("span",{class:"chev"},"▾"),sel),next);
-    if(navDir&&window.gsap&&!RM)gsap.from("#navL",{x:navDir*30,opacity:0,duration:.4,ease:"power3.out"});
+    if(navDir&&!RM){const nl=$("navL");nl.style.setProperty("--dx",navDir*30+"px");nl.classList.add("slideIn")}
     navDir=0;
   }
 
@@ -250,8 +249,11 @@ function render(){
 
 function closeSheet(){
   if(!open)return;
-  if(window.gsap&&!RM){gsap.to("#detail",{yPercent:100,duration:.4,ease:"power3.in"});gsap.to("#scrim",{opacity:0,duration:.4,onComplete:()=>{open=null;render()}})}
-  else{open=null;render()}
+  if(RM){open=null;render();return}
+  const dt=$("detail"),sc=$("scrim");
+  if(dt.classList.contains("out"))return;
+  dt.classList.remove("in");dt.classList.add("out");sc.classList.add("out");
+  setTimeout(()=>{dt.classList.remove("out");sc.classList.remove("out");open=null;render()},400);
 }
 let sheetOpen=false;
 function agg(l){let inc=0,out=0,sav=0;for(const t of l){if(t.i>0)inc+=t.i;else{out-=t.i;if(categoria(t)==="Risparmi e investimenti")sav-=t.i}}return{inc,out,sav}}
@@ -335,12 +337,13 @@ function openForm(){
   formOpen=true;setType(-1);
   $("mAmt").value="";$("mName").value="";$("mDate").value=isoDay(new Date());$("mCat").value="Altro";$("mSrc").value=src==="tot"?"contanti":src;$("mErr").hidden=true;
   $("mform").hidden=false;$("scrim").hidden=false;document.body.style.overflow="hidden";
-  if(window.gsap&&!RM){gsap.fromTo("#mform",{yPercent:100},{yPercent:0,duration:.55,ease:"power4.out"});gsap.fromTo("#scrim",{opacity:0},{opacity:1,duration:.3})}
+  $("mform").classList.remove("out");if(!RM)$("mform").classList.add("in");
 }
 function closeForm(){
   const done=()=>{formOpen=false;$("mform").hidden=true;$("scrim").hidden=!open;document.body.style.overflow=open?"hidden":""};
-  if(window.gsap&&!RM){gsap.to("#mform",{yPercent:100,duration:.35,ease:"power3.in",onComplete:done});if(!open)gsap.to("#scrim",{opacity:0,duration:.35})}
-  else done();
+  if(RM){done();return}
+  const fm=$("mform");fm.classList.remove("in");fm.classList.add("out");if(!open)$("scrim").classList.add("out");
+  setTimeout(()=>{fm.classList.remove("out");$("scrim").classList.remove("out");done()},360);
 }
 async function saveForm(){
   const v=parseFloat(String($("mAmt").value).replace(",",".")),name=norm($("mName").value),day=$("mDate").value,e=$("mErr");
@@ -411,11 +414,11 @@ function renderDetail(cur){
   if(rows.length>60)lc.append(h("p",{class:"mute"},"Mostro i 60 più recenti."));
   box.append(lc);
   box.prepend(h("div",{class:"grab"}));
-  if(window.gsap&&!RM&&!was){
-    gsap.fromTo("#detail",{yPercent:100},{yPercent:0,duration:.6,ease:"power4.out"});
-    gsap.fromTo("#scrim",{opacity:0},{opacity:1,duration:.4});
-    gsap.from("#detail > *",{y:24,opacity:0,duration:.6,stagger:.08,ease:"power3.out",delay:.15});
-    if(document.querySelector("#detail .gb"))gsap.from("#detail .gb",{scaleY:0,transformOrigin:"50% 100%",duration:.8,stagger:.05,delay:.3,ease:"power3.out"});
+  box.classList.remove("in");
+  if(!RM&&!was){
+    box.classList.add("in");
+    [...box.children].forEach((n,i)=>n.style.animationDelay=(.15+i*.08)+"s");
+    box.querySelectorAll(".gb").forEach((n,i)=>n.style.animationDelay=(.3+i*.05)+"s");
   }
 }
 
@@ -441,26 +444,22 @@ $("save").onclick=async()=>{
 };
 
 let navDir=0,navGo=null;
+/* animazioni: solo CSS (nessuna libreria), così non possono restare "a metà" */
+function kick(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls)}
 function animateIn(){
-  if(!window.gsap||RM)return;
-  const has=q=>document.querySelector(q);
-  const tl=gsap.timeline({defaults:{ease:"power3.out"}});
-  tl.from("#hero",{y:34,opacity:0,scale:.95,duration:.85},0);
-  if(has("#brk .seg"))tl.fromTo("#brk .seg",{strokeDashoffset:100},{strokeDashoffset:0,duration:1.2,stagger:.09},.15);
-  if(has("#stats .st"))tl.from("#stats .st",{y:26,opacity:0,scale:.94,duration:.6,stagger:.1},.2);
-  if(has("#lnc .ln")){tl.fromTo("#lnc .ln",{strokeDashoffset:1},{strokeDashoffset:0,duration:1.4},.35);tl.from("#lnc .ar",{opacity:0,duration:1},.7)}
-  if(has("#table .row"))tl.from("#table .row",{y:22,opacity:0,duration:.55,stagger:.07},.35);
   document.querySelectorAll("#table .amt,#stats .amt").forEach(e=>countUp(e,+e.dataset.v));
-  if(has("#table .rbar i"))tl.from("#table .rbar i",{width:0,duration:1,stagger:.07},.5);
+  if(RM)return;
+  kick($("hero"),"rise");
+  const st=(sel,base,step)=>document.querySelectorAll(sel).forEach((n,i)=>n.style.animationDelay=(base+i*step)+"s");
+  st("#stats .st",.2,.1);st("#table .row",.35,.07);st("#table .rbar i",.5,.07);st("#table .ic",.4,.06);st("#brk .seg",.15,.09);
 }
 function intro(){
-  if(!window.gsap||RM)return;
-  gsap.from([".brand","#intro"],{y:28,opacity:0,duration:.8,stagger:.12,ease:"power3.out"});gsap.from("#drop",{opacity:0,duration:.8,delay:.25,ease:"power3.out"});
-  gsap.to(".drop svg",{y:-4,duration:1.1,repeat:-1,yoyo:true,ease:"sine.inOut"});
-  gsap.to(".o1",{x:-34,y:34,duration:7,repeat:-1,yoyo:true,ease:"sine.inOut"});
-  gsap.to(".o2",{x:44,y:-24,duration:9,repeat:-1,yoyo:true,ease:"sine.inOut"});
-  const io=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){io.unobserve(e.target);gsap.from(e.target,{y:40,opacity:0,duration:.85,ease:"power3.out"})}},{threshold:.12});
-  document.querySelectorAll("#result h2,#table,#todo,#srch,#brk,#lnc,#stats").forEach(el=>io.observe(el));
+  if(RM||!("IntersectionObserver" in window))return;
+  /* le sezioni sotto lo schermo compaiono quando ci arrivi; dopo 4 secondi tornano comunque tutte visibili */
+  const els=[...document.querySelectorAll("#result h2,#table,#todo,#srch,#brk,#lnc,#stats")];
+  const io=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){io.unobserve(e.target);e.target.classList.remove("rvh");e.target.classList.add("rvi")}},{threshold:.12});
+  for(const el of els){if(el.getBoundingClientRect().top>innerHeight*.9)el.classList.add("rvh");io.observe(el)}
+  setTimeout(()=>{for(const el of els)el.classList.remove("rvh")},4000);
 }
 let sx=0,sy=0;
 $("hero").addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
@@ -590,7 +589,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeHist()});
     Q("#secState").innerHTML="Blocco con Face ID: <strong>"+(on?"attivo":"non attivo")+"</strong>";
     tog.textContent=on?"Disattiva il blocco":"Attiva il blocco";
   }
-  function openSheet(){secNote();paint();sheet.hidden=false;if(window.gsap&&!RM)gsap.fromTo(".secpanel",{y:50,opacity:0},{y:0,opacity:1,duration:.4,ease:"power3.out"})}
+  function openSheet(){secNote();paint();sheet.hidden=false}
   Q("#secBtn").onclick=openSheet;
   Q("#secClose").onclick=()=>{sheet.hidden=true};
   sheet.addEventListener("click",e=>{if(e.target===sheet)sheet.hidden=true});

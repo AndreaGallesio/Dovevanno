@@ -158,8 +158,8 @@ html.locked,html.locked body{overflow:hidden}
 .phmsg2.ok{background:rgba(74,222,128,.16);color:#86efac;border-color:rgba(74,222,128,.4)}
 
 /* ===== Storico di entrate, uscite e risparmi ===== */
-.st{cursor:pointer;position:relative;transition:transform .2s var(--ease)}
-.st:active{transform:scale(.96)}
+.st{cursor:pointer;position:relative;transition:scale .2s var(--ease)}
+.st:active{scale:.96}
 .st::after{content:"›";position:absolute;top:8px;right:12px;font-size:22px;line-height:1;color:var(--c);opacity:.85}
 #hist{position:fixed;inset:0;z-index:90;overflow-y:auto;background:var(--bg);padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))}
 html.locked #hist{visibility:hidden}
@@ -190,3 +190,47 @@ html.locked #hist{visibility:hidden}
 #hist .hrow{animation:fadeup .4s var(--ease) both}
 #hist .hb i{animation:grow .8s var(--ease) both}
 #hist .gb{transform-box:fill-box;transform-origin:50% 100%;animation:growy .7s var(--ease) both}
+
+/* ===== Animazioni (solo CSS) ===== */
+@keyframes enter{from{opacity:0;transform:translateY(28px)}}
+@keyframes heroin{from{opacity:0;transform:translateY(34px) scale(.95)}}
+@keyframes cardin{from{opacity:0;transform:translateY(26px) scale(.94)}}
+@keyframes pop{from{opacity:0;transform:scale(.4)}}
+@keyframes segdraw{from{stroke-dashoffset:100}}
+@keyframes lndraw{from{stroke-dashoffset:1}}
+@keyframes fadein{from{opacity:0}}
+@keyframes fadeout{to{opacity:0}}
+@keyframes rvin{from{opacity:0;transform:translateY(40px)}}
+@keyframes slidein{from{opacity:0;transform:translateX(var(--dx,30px))}}
+@keyframes sheetin{from{transform:translateY(100%)}}
+@keyframes sheetout{to{transform:translateY(100%)}}
+@keyframes sheetup{from{opacity:0;transform:translateY(50px)}}
+@keyframes float1{to{transform:translate(-34px,34px)}}
+@keyframes float2{to{transform:translate(44px,-24px)}}
+@keyframes bob{to{transform:translateY(-4px)}}
+.brand,#intro,#drop{animation:enter .8s var(--ease) backwards}
+#intro{animation-delay:.12s}#drop{animation-delay:.25s}
+.o1{animation:float1 7s ease-in-out infinite alternate}
+.o2{animation:float2 9s ease-in-out infinite alternate}
+.drop svg{animation:bob 1.1s ease-in-out infinite alternate}
+#hero.rise{animation:heroin .85s var(--ease) backwards}
+#stats .st{animation:cardin .6s var(--ease) backwards}
+#table .row{animation:fadeup .55s var(--ease) backwards}
+#table .rbar i{animation:grow 1s var(--ease) backwards}
+#table .ic{animation:pop .5s cubic-bezier(.34,1.56,.64,1) backwards}
+#brk .seg{animation:segdraw 1.2s var(--ease) backwards}
+#lnc .ln{animation:lndraw 1.4s var(--ease) .35s backwards}
+#lnc .ar{animation:fadein 1s ease .7s backwards}
+.rvh{opacity:0;transform:translateY(40px)}
+.rvi{animation:rvin .85s var(--ease)}
+#navL{display:inline-block}
+#navL.slideIn{animation:slidein .4s var(--ease)}
+#scrim:not([hidden]){animation:fadein .3s ease}
+#scrim.out{animation:fadeout .4s ease both}
+#detail.in{animation:sheetin .6s var(--ease)}
+#detail.in>*{animation:fadeup .6s var(--ease) backwards}
+#detail.in .gb{transform-box:fill-box;transform-origin:50% 100%;animation:growy .8s var(--ease) backwards}
+#detail.out{animation:sheetout .4s ease-in both}
+#mform.in{animation:sheetin .55s var(--ease)}
+#mform.out{animation:sheetout .35s ease-in both}
+.secm:not([hidden]) .secpanel{animation:sheetup .4s var(--ease)}
