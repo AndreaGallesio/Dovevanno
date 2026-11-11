@@ -484,9 +484,11 @@ const HIST={
   sav:{t:"Storico dei risparmi",c:"#5aa2ff",good:1}
 };
 function closeHist(then){
-  const el=$("hist");if(el.hidden)return;
-  const done=()=>{el.hidden=true;document.body.style.overflow="";if(then)then()};
-  if(window.gsap&&!RM)gsap.to(el,{x:"100%",duration:.35,ease:"power3.in",onComplete:done});else done();
+  const el=$("hist");if(el.hidden||el.classList.contains("out"))return;
+  const done=()=>{el.hidden=true;el.classList.remove("in","out");document.body.style.overflow="";if(then)then()};
+  if(RM){done();return}
+  el.classList.remove("in");el.classList.add("out");
+  setTimeout(done,380);
 }
 function openHist(key){
   const meta=HIST[key],ms=allMonths(),list=T(),el=$("hist"),body=$("histBody");
@@ -531,14 +533,12 @@ function openHist(key){
       h("div",{class:"hb"},h("i",{style:"width:"+(x.v/mx*100).toFixed(1)+"%;background:"+meta.c}))));
   }
   body.append(h("h2",{style:"margin:22px 4px 8px"},"Mese per mese"),rows);
+  body.querySelectorAll(".hsum>div").forEach((n,i)=>n.style.animationDelay=(.15+i*.08)+"s");
+  body.querySelectorAll(".gb").forEach((n,i)=>n.style.animationDelay=(.25+i*.04)+"s");
+  body.querySelectorAll(".hrow").forEach((n,i)=>n.style.animationDelay=(.3+i*.05)+"s");
+  body.querySelectorAll(".hb i").forEach((n,i)=>n.style.animationDelay=(.4+i*.05)+"s");
   el.hidden=false;el.scrollTop=0;document.body.style.overflow="hidden";
-  if(window.gsap&&!RM){
-    gsap.fromTo(el,{x:"100%"},{x:"0%",duration:.45,ease:"power4.out"});
-    gsap.from("#hist .hsum>div",{y:20,opacity:0,duration:.5,stagger:.08,delay:.15,ease:"power3.out"});
-    gsap.from("#hist .gb",{scaleY:0,transformOrigin:"50% 100%",duration:.7,stagger:.04,delay:.25,ease:"power3.out"});
-    gsap.from("#hist .hrow",{y:16,opacity:0,duration:.4,stagger:.04,delay:.3,ease:"power3.out"});
-    gsap.from("#hist .hb i",{width:0,duration:.8,stagger:.04,delay:.4,ease:"power3.out"});
-  }
+  el.classList.remove("out");el.classList.add("in");
   const sc=chart;sc.scrollLeft=sc.scrollWidth;
 }
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeHist()});

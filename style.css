@@ -179,3 +179,14 @@ html.locked #hist{visibility:hidden}
 .hb i{display:block;height:100%;border-radius:3px}
 .hd{font-size:13px;font-weight:700}
 .hd.good{color:#4ade80}.hd.bad{color:#ff7d8f}.hd.flat{color:var(--mute)}
+
+/* animazioni dello storico: solo CSS, per evitare sparizioni su Safari */
+@keyframes hin{from{transform:translateX(100%)}}
+@keyframes hout{to{transform:translateX(100%)}}
+#hist.in{animation:hin .45s var(--ease) both}
+#hist.out{animation:hout .35s ease-in both}
+#hist .card{backdrop-filter:none;-webkit-backdrop-filter:none;background:#131629}
+#hist .hsum>div{animation:fadeup .5s var(--ease) both}
+#hist .hrow{animation:fadeup .4s var(--ease) both}
+#hist .hb i{animation:grow .8s var(--ease) both}
+#hist .gb{transform-box:fill-box;transform-origin:50% 100%;animation:growy .7s var(--ease) both}
